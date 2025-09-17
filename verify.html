@@ -1,34 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Certificate Verification</title>
+  <meta charset="UTF-8">
+  <title>Certificate Verification - 4DTS</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; background: #f9f9f9; }
+    .card { max-width: 800px; margin: auto; padding: 20px; border-radius: 12px; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    h2 { color: #2c3e50; }
+    .label { font-weight: bold; }
+    .not-found { color: red; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #3498db; color: white; text-align: left; }
+    tr:nth-child(even) { background: #f2f2f2; }
+    a.button { display: inline-block; padding: 6px 10px; background: #3498db; color: white; text-decoration: none; border-radius: 6px; }
+    a.button:hover { background: #2980b9; }
+  </style>
 </head>
 <body>
+  <div class="card">
     <h2>Certificate Verification</h2>
-    <div id="result"></div>
+    <div id="result">Loading...</div>
+  </div>
 
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        const batch = params.get('batch');
+  <script>
+    async function loadCertificates() {
+      const params = new URLSearchParams(window.location.search);
+      const batchId = params.get("id");
 
-        // Replace this with your actual batch data
-        const batchData = {
-            "batch_2025_1": [
-                {cert_id:"2025-00097", name:"Juan Cruz"},
-                {cert_id:"2025-00098", name:"Maria Santos"}
-            ]
-        };
+      if (!batchId) {
+        document.getElementById("result").innerHTML = "<p class='not-found'>No Batch ID provided.</p>";
+        return;
+      }
 
-        if(batch && batchData[batch]){
-            let html = "<h3>Certificates in this batch:</h3><ul>";
-            batchData[batch].forEach(c => {
-                html += `<li>${c.cert_id} - ${c.name}</li>`;
-            });
-            html += "</ul>";
-            document.getElementById('result').innerHTML = html;
+      try {
+        const response = await fetch("certificates.csv");
+        const data = await response.text();
+
+        const rows = data.trim().split("\n").map(r => r.split(","));
+        const headers = rows[0];
+        const entries = rows.slice(1);
+
+        const certs = entries.filter(row => row[0] === batchId);
+
+        if (certs.length > 0) {
+          let html = `<p><span class="label">Batch ID:</span> ${batchId}</p>`;
+          html += `<table><tr><th>Name</th><th>Course</th><th>Date</th></tr>`;
+          certs.forEach((row) => {
+            const [id, name, course, date] = row;
+            html += `<tr>
+              <td>${name}</td>
+              <td>${course}</td>
+              <td>${date}</td>
+            </tr>`;
+          });
+          // single batch PDF link
+          const pdfFile = `certificates/${batchId}.pdf`;
+          html += `</table><p><a class="button" href="${pdfFile}" target="_blank">View Full Batch Certificates</a></p>`;
+          document.getElementById("result").innerHTML = html;
         } else {
-            document.getElementById('result').innerText = "Invalid batch ID";
+          document.getElementById("result").innerHTML = "<p class='not-found'>No certificates found for this Batch ID.</p>";
         }
-    </script>
+      } catch (err) {
+        document.getElementById("result").innerHTML = "<p class='not-found'>Error loading certificates.csv</p>";
+      }
+    }
+
+    loadCertificates();
+  </script>
 </body>
 </html>
